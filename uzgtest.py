@@ -6,7 +6,7 @@ print uzg.get_overzicht()
 
 print '\n\n'
 
-print uzg.get_items('743')
+print uzg.get_items('AT_2032968')
 
 print '\n\n'
 

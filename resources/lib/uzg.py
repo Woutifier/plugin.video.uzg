@@ -13,6 +13,7 @@
 import urllib2 ,re ,time ,json
 from datetime import datetime
 from HTMLParser import HTMLParser
+from urlparse import urljoin
 
 # create a subclass and override the handler methods
 class MyHTMLParser(HTMLParser):
@@ -35,7 +36,12 @@ class MyHTMLParser(HTMLParser):
             if hrefattr is not None:
                 match = re.search("([0-9]{1,2}-[0-9]{1,2}-[0-9]{4})", hrefattr)
                 if match:
-                    self._current_episode['date'] = datetime.strptime(match.group(1), "%d-%m-%Y").strftime('%Y-%m-%dT%H:%M:%S')
+                    parsed_date = None
+                    try:
+                        parsed_date = datetime.strptime(match.group(1), "%d-%m-%Y")
+                    except TypeError:
+                        parsed_date = datetime(*(time.strptime(match.group(1), "%d-%m-%Y")[0:6]))
+                    self._current_episode['date'] = parsed_date.strftime('%Y-%m-%dT%H:%M:%S')
                     self._current_episode['TimeStamp'] = self._current_episode['date']
                 match = re.search("/([A-Z]+_[0-9]+)$", hrefattr)
                 if match:
@@ -85,16 +91,31 @@ class Uzg:
             self.overzichtcache = sorted(uzgitemlist, key=lambda x: x['label'], reverse=False)
 
         def __items(self, nebo_id):
-            req = urllib2.Request("https://www.npo.nl/media/series/{}/episodes?page=1&tilemapping=dedicated&tiletype=asset".format(nebo_id))
+            jsondata = self.get_url_data_as_json("https://www.npo.nl/media/series/{}/episodes?page=1&tilemapping=dedicated&tiletype=asset".format(nebo_id))
+
+            #First
+            parser = MyHTMLParser()
+            parser.feed(jsondata['tiles'])
+            episode_list = []
+            episode_list.extend(parser.episodes)
+
+            while jsondata['nextLink'] != "":
+                url = urljoin("https://www.npo.nl", jsondata['nextLink']+"&tilemapping=dedicated&tiletype=asset")
+                jsondata = self.get_url_data_as_json(url)
+                parser = MyHTMLParser()
+                parser.feed(jsondata['tiles'])
+                episode_list.extend(parser.episodes)
+
+            self.items = episode_list
+
+        def get_url_data_as_json(self, url):
+            req = urllib2.Request(url)
             req.add_header('User-Agent', 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:25.0) Gecko/20100101 Firefox/25.0')
             req.add_header('X-Requested-With', 'XMLHttpRequest')
             response = urllib2.urlopen(req)
             data = response.read()
             response.close()
-            html = json.loads(data)['tiles']
-            parser = MyHTMLParser()
-            parser.feed(html)
-            self.items = parser.episodes
+            return json.loads(data)
         # def __items(self, nebo_id):
         #     req = urllib2.Request('http://apps-api.uitzendinggemist.nl/series/'+nebo_id+'.json')
         #     req.add_header('User-Agent', 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:25.0) Gecko/20100101 Firefox/25.0')
@@ -164,7 +185,7 @@ class Uzg:
                 titelnaam = post['label']
 
             item = {
-                'label': '(' + post['TimeStamp'].split('T')[1] + ') - ' + titelnaam,
+                'label': '(' + post['TimeStamp'].split('T')[0] + ') - ' + titelnaam,
                 'date': post['date'],
                 'thumbnail': post['thumbnail'],
                 'whatson_id': post['whatson_id'],
