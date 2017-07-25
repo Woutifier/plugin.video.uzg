@@ -80,7 +80,7 @@ class Uzg:
             json_data = json.loads(link)
             uzgitemlist = list()
             for serie in json_data:
-                uzgitem = { 'label': serie['name'], 'nebo_id': serie['nebo_id'], 'thumbnail': serie['image'] }
+                uzgitem = { 'label': serie['name'], 'nebo_id': serie['mid'], 'thumbnail': serie['image'] }
                 uzgitemlist.append(uzgitem)                
             self.overzichtcache = sorted(uzgitemlist, key=lambda x: x['label'], reverse=False)
 
