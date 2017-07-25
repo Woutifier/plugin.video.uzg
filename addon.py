@@ -15,7 +15,7 @@ import time
 import xbmcplugin
 
 PLUGIN_NAME = 'uzg'
-PLUGIN_ID = 'plugin.video.uzg'
+PLUGIN_ID = 'plugin.video.uzg2'
 plugin = Plugin(PLUGIN_NAME, PLUGIN_ID, __file__)
 
 uzg = resources.lib.uzg.Uzg()
