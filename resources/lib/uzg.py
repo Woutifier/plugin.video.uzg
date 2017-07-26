@@ -16,7 +16,7 @@ from HTMLParser import HTMLParser
 from urlparse import urljoin
 
 # create a subclass and override the handler methods
-class MyHTMLParser(HTMLParser):
+class UZGEpisodeListParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
         self.episodes = []
@@ -74,8 +74,8 @@ class Uzg:
         # Init
         #
         def __init__( self):
-            self.overzichtcache = 'leeg'
-            self.items = 'leeg'            
+            self.overzichtcache = None
+            self.items = None            
 
         def __overzicht(self):        
             req = urllib2.Request('http://apps-api.uitzendinggemist.nl/series.json')
@@ -93,20 +93,15 @@ class Uzg:
         def __items(self, nebo_id):
             jsondata = self.get_url_data_as_json("https://www.npo.nl/media/series/{}/episodes?page=1&tilemapping=dedicated&tiletype=asset".format(nebo_id))
 
-            #First
-            parser = MyHTMLParser()
+            parser = UZGEpisodeListParser()
             parser.feed(jsondata['tiles'])
-            episode_list = []
-            episode_list.extend(parser.episodes)
 
             while jsondata['nextLink'] != "":
                 url = urljoin("https://www.npo.nl", jsondata['nextLink']+"&tilemapping=dedicated&tiletype=asset")
                 jsondata = self.get_url_data_as_json(url)
-                parser = MyHTMLParser()
                 parser.feed(jsondata['tiles'])
-                episode_list.extend(parser.episodes)
 
-            self.items = episode_list
+            self.items = parser.episodes
 
         def get_url_data_as_json(self, url):
             req = urllib2.Request(url)
@@ -116,28 +111,6 @@ class Uzg:
             data = response.read()
             response.close()
             return json.loads(data)
-        # def __items(self, nebo_id):
-        #     req = urllib2.Request('http://apps-api.uitzendinggemist.nl/series/'+nebo_id+'.json')
-        #     req.add_header('User-Agent', 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:25.0) Gecko/20100101 Firefox/25.0')
-        #     response = urllib2.urlopen(req)
-        #     link=response.read()
-        #     response.close()
-        #     json_data = json.loads(link)
-        #     uzgitemlist = list()
-        #     for aflevering in json_data['episodes']:
-        #         urlcover = ''
-        #         if not aflevering['stills']:
-        #             urlcover = ''
-        #         else:
-        #             urlcover = aflevering['stills'][0]['url']
-        #         uzgitem = { 'label': aflevering['name']
-        #                     , 'date': self.__stringnaardatumnaarstring(datetime.fromtimestamp(int(aflevering['broadcasted_at'])).strftime('%Y-%m-%dT%H:%M:%S'))
-        #                     , 'TimeStamp': datetime.fromtimestamp(int(aflevering['broadcasted_at'])).strftime('%Y-%m-%dT%H:%M:%S')
-        #                     , 'thumbnail': urlcover
-        #                     , 'serienaam': json_data['name']
-        #                     , 'whatson_id': aflevering['whatson_id']}
-        #         uzgitemlist.append(uzgitem)
-        #     self.items = uzgitemlist
 
         def __get_data_from_url(self, url):
             req = urllib2.Request(url)
@@ -166,14 +139,14 @@ class Uzg:
             return url_play
             
         def get_overzicht(self):
-            self.items = 'leeg' ##items weer leeg maken
-            if (self.overzichtcache == 'leeg'):
+            self.items = None ##items weer leeg maken
+            if (self.overzichtcache == None):
                 self.__overzicht()
             return self.overzichtcache            
 
 
         def get_items(self, nebo_id):
-            if (self.items == 'leeg'):
+            if (self.items == None):
                 self.__items(nebo_id)
             return [self.__build_item(i) for i in self.items]
     
